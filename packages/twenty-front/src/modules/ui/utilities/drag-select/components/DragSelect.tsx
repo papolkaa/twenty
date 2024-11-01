@@ -31,7 +31,9 @@ export const DragSelect = ({
         queueMicrotask(() => {
           items.forEach((item) => {
             const id = item.getAttribute('data-selectable-id');
-            if (id) onDragSelectionChange(id, true);
+            if (id !== null) {
+              onDragSelectionChange(id, true);
+            }
           });
         });
         return;
@@ -47,7 +49,9 @@ export const DragSelect = ({
         queueMicrotask(() => {
           items.forEach((item) => {
             const id = item.getAttribute('data-selectable-id');
-            if (id) onDragSelectionChange(id, false);
+            if (id !== null) {
+              onDragSelectionChange(id, false);
+            }
           });
         });
       }

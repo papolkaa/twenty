@@ -19,12 +19,12 @@ module.exports = {
     {
       files: ['*.ts', '*.tsx'],
       parserOptions: {
-        project: ['packages/twenty-front/tsconfig.{json,*.json}'],
+        project: ['tsconfig.{json,*.json}'],
       },
       plugins: ['project-structure'],
       settings: {
         'project-structure/folder-structure-config-path':
-          'packages/twenty-front/folderStructure.json',
+          'folderStructure.json',
       },
       rules: {
         'project-structure/folder-structure': 'error',

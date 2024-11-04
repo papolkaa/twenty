@@ -84,7 +84,8 @@ export const FieldsCard = ({
           fieldMetadataItem.name === 'taskTargets')
       ),
   );
-  const isReadOnly = objectMetadataItem.isRemote;
+  const isReadOnly =
+    objectMetadataItem.isRemote || isDefined(recordFromStore?.deletedAt);
 
   return (
     <>

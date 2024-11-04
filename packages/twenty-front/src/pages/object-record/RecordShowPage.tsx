@@ -30,7 +30,6 @@ export const RecordShowPage = () => {
     pageTitle,
     pageName,
     isFavorite,
-    handleFavoriteButtonClick,
     record,
     objectMetadataItem,
   } = useRecordShowPage(
@@ -69,7 +68,6 @@ export const RecordShowPage = () => {
                     <RecordShowActionMenu
                       {...{
                         isFavorite,
-                        handleFavoriteButtonClick,
                         record,
                         objectMetadataItem,
                         objectNameSingular,

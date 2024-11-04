@@ -9,6 +9,7 @@ import isPropValid from '@emotion/is-prop-valid';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 import { isNonEmptyString } from '@sniptt/guards';
+import { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useRecoilState } from 'recoil';
 import {
@@ -36,27 +37,32 @@ export type NavigationDrawerItemProps = {
   soon?: boolean;
   count?: number;
   keyboard?: string[];
+  rightOptions?: ReactNode;
+  isDropdownOpen?: boolean;
 };
 
 type StyledItemProps = Pick<
   NavigationDrawerItemProps,
   'active' | 'danger' | 'indentationLevel' | 'soon' | 'to'
-> & { isNavigationDrawerExpanded: boolean };
+> & { isNavigationDrawerExpanded: boolean; isDropdownOpen?: boolean };
 
 const StyledItem = styled('button', {
   shouldForwardProp: (prop) =>
-    !['active', 'danger', 'soon'].includes(prop) && isPropValid(prop),
+    !['active', 'danger', 'soon', 'isDropdownOpen'].includes(prop) &&
+    isPropValid(prop),
 })<StyledItemProps>`
   box-sizing: content-box;
   align-items: center;
   background: ${(props) =>
-    props.active ? props.theme.background.transparent.light : 'inherit'};
+    props.active || props.isDropdownOpen
+      ? props.theme.background.transparent.light
+      : 'inherit'};
   height: ${({ theme }) => theme.spacing(5)};
   border: none;
   border-radius: ${({ theme }) => theme.border.radius.sm};
   text-decoration: none;
   color: ${(props) => {
-    if (props.active === true) {
+    if (props.active === true || props.isDropdownOpen === true) {
       return props.theme.font.color.primary;
     }
     if (props.danger === true) {
@@ -103,7 +109,6 @@ const StyledItem = styled('button', {
     font-size: ${({ theme }) => theme.font.size.lg};
   }
 `;
-
 const StyledItemElementsContainer = styled.span`
   align-items: center;
   display: flex;
@@ -150,7 +155,26 @@ const StyledNavigationDrawerItemContainer = styled.span`
 const StyledSpacer = styled.span`
   flex-grow: 1;
 `;
-
+const StyledRightOptionsContainer = styled.div<{
+  isMobile: boolean;
+  isDropdownOpen?: boolean;
+}>`
+  margin-left: auto;
+  visibility: ${({ isMobile, isDropdownOpen }) =>
+    isMobile || isDropdownOpen === true ? 'visible' : 'hidden'};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  :hover {
+    background: ${({ theme }) => theme.background.transparent.light};
+  }
+  width: ${({ theme }) => theme.spacing(6)};
+  height: ${({ theme }) => theme.spacing(6)};
+  border-radius: ${({ theme }) => theme.border.radius.sm};
+  .navigation-drawer-item:hover & {
+    visibility: visible;
+  }
+`;
 export const NavigationDrawerItem = ({
   className,
   label,
@@ -164,10 +188,13 @@ export const NavigationDrawerItem = ({
   count,
   keyboard,
   subItemState,
+  rightOptions,
+  isDropdownOpen,
 }: NavigationDrawerItemProps) => {
   const theme = useTheme();
   const isMobile = useIsMobile();
   const isSettingsPage = useIsSettingsPage();
+
   const navigate = useNavigate();
   const [isNavigationDrawerExpanded, setIsNavigationDrawerExpanded] =
     useRecoilState(isNavigationDrawerExpandedState);
@@ -191,7 +218,7 @@ export const NavigationDrawerItem = ({
   return (
     <StyledNavigationDrawerItemContainer>
       <StyledItem
-        className={className}
+        className={`navigation-drawer-item ${className || ''}`}
         onClick={handleItemClick}
         active={active}
         aria-selected={active}
@@ -201,6 +228,7 @@ export const NavigationDrawerItem = ({
         to={to ? to : undefined}
         indentationLevel={indentationLevel}
         isNavigationDrawerExpanded={isNavigationDrawerExpanded}
+        isDropdownOpen={isDropdownOpen}
       >
         {showBreadcrumb && (
           <NavigationDrawerAnimatedCollapseWrapper>
@@ -246,6 +274,20 @@ export const NavigationDrawerItem = ({
               </StyledKeyBoardShortcut>
             </NavigationDrawerAnimatedCollapseWrapper>
           )}
+          <NavigationDrawerAnimatedCollapseWrapper>
+            {rightOptions && (
+              <StyledRightOptionsContainer
+                isMobile={isMobile}
+                isDropdownOpen={isDropdownOpen}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+              >
+                {rightOptions}
+              </StyledRightOptionsContainer>
+            )}
+          </NavigationDrawerAnimatedCollapseWrapper>
         </StyledItemElementsContainer>
       </StyledItem>
     </StyledNavigationDrawerItemContainer>

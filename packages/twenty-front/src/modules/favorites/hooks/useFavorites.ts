@@ -1,22 +1,28 @@
-import { OnDragEndResponder } from '@hello-pangea/dnd';
-import { useMemo } from 'react';
-import { useRecoilValue } from 'recoil';
-
-import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
-import { Favorite } from '@/favorites/types/Favorite';
+import { calculateNewPosition } from '@/favorites/utils/calculateNewPosition';
 import { sortFavorites } from '@/favorites/utils/sortFavorites';
 import { useGetObjectRecordIdentifierByNameSingular } from '@/object-metadata/hooks/useGetObjectRecordIdentifierByNameSingular';
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
+import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { useCreateOneRecord } from '@/object-record/hooks/useCreateOneRecord';
 import { useDeleteOneRecord } from '@/object-record/hooks/useDeleteOneRecord';
 import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
+import { ObjectRecord } from '@/object-record/types/ObjectRecord';
 import { usePrefetchedData } from '@/prefetch/hooks/usePrefetchedData';
 import { PrefetchKey } from '@/prefetch/types/PrefetchKey';
+import { View } from '@/views/types/View';
+import { OnDragEndResponder } from '@hello-pangea/dnd';
+import { useMemo } from 'react';
+import { useRecoilValue } from 'recoil';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
+import { usePrefetchedFavoritesData } from './usePrefetchedFavoritesData';
 
 export const useFavorites = () => {
-  const currentWorkspaceMember = useRecoilValue(currentWorkspaceMemberState);
+  const { favorites, workspaceFavorites, folders, currentWorkspaceMemberId } =
+    usePrefetchedFavoritesData();
+
+  const { records: views } = usePrefetchedData<View>(PrefetchKey.AllViews);
+  const objectMetadataItems = useRecoilValue(objectMetadataItemsState);
 
   const { objectMetadataItem: favoriteObjectMetadataItem } =
     useObjectMetadataItem({
@@ -35,30 +41,13 @@ export const useFavorites = () => {
     objectNameSingular: CoreObjectNameSingular.Favorite,
   });
 
-  const { records: favorites } = usePrefetchedData<Favorite>(
-    PrefetchKey.AllFavorites,
-    {
-      workspaceMemberId: {
-        eq: currentWorkspaceMember?.id ?? '',
-      },
-    },
-  );
-
-  const { records: workspaceFavorites } = usePrefetchedData<Favorite>(
-    PrefetchKey.AllFavorites,
-    {
-      workspaceMemberId: {
-        eq: undefined,
-      },
-    },
-  );
-
   const favoriteRelationFieldMetadataItems = useMemo(
     () =>
       favoriteObjectMetadataItem.fields.filter(
         (fieldMetadataItem) =>
           fieldMetadataItem.type === FieldMetadataType.Relation &&
-          fieldMetadataItem.name !== 'workspaceMember',
+          fieldMetadataItem.name !== 'workspaceMember' &&
+          fieldMetadataItem.name !== 'favoriteFolder',
       ),
     [favoriteObjectMetadataItem.fields],
   );
@@ -72,11 +61,15 @@ export const useFavorites = () => {
       favoriteRelationFieldMetadataItems,
       getObjectRecordIdentifierByNameSingular,
       true,
+      views,
+      objectMetadataItems,
     );
   }, [
     favoriteRelationFieldMetadataItems,
     favorites,
     getObjectRecordIdentifierByNameSingular,
+    views,
+    objectMetadataItems,
   ]);
 
   const workspaceFavoritesSorted = useMemo(() => {
@@ -85,21 +78,60 @@ export const useFavorites = () => {
       favoriteRelationFieldMetadataItems,
       getObjectRecordIdentifierByNameSingular,
       false,
+      views,
+      objectMetadataItems,
     );
   }, [
     favoriteRelationFieldMetadataItems,
     getObjectRecordIdentifierByNameSingular,
     workspaceFavorites,
+    views,
+    objectMetadataItems,
+  ]);
+
+  const favoritesByFolder = useMemo(() => {
+    return folders.map((folder) => ({
+      folderId: folder.id,
+      folderName: folder.name,
+      favorites: sortFavorites(
+        favorites.filter((favorite) => favorite.favoriteFolderId === folder.id),
+        favoriteRelationFieldMetadataItems,
+        getObjectRecordIdentifierByNameSingular,
+        true,
+        views,
+        objectMetadataItems,
+      ),
+    }));
+  }, [
+    folders,
+    favorites,
+    favoriteRelationFieldMetadataItems,
+    getObjectRecordIdentifierByNameSingular,
+    views,
+    objectMetadataItems,
   ]);
 
   const createFavorite = (
-    targetRecord: Record<string, any>,
+    targetRecord: ObjectRecord,
     targetObjectNameSingular: string,
+    favoriteFolderId?: string,
   ) => {
+    const relevantFavorites = favoriteFolderId
+      ? favorites.filter((fav) => fav.favoriteFolderId === favoriteFolderId)
+      : favorites.filter(
+          (fav) => !fav.favoriteFolderId && fav.workspaceMemberId,
+        );
+
+    const maxPosition = Math.max(
+      ...relevantFavorites.map((fav) => fav.position),
+      0,
+    );
+
     createOneFavorite({
       [targetObjectNameSingular]: targetRecord,
-      position: favorites.length + 1,
-      workspaceMemberId: currentWorkspaceMember?.id,
+      position: maxPosition + 1,
+      workspaceMemberId: currentWorkspaceMemberId,
+      favoriteFolderId,
     });
   };
 
@@ -107,54 +139,55 @@ export const useFavorites = () => {
     deleteOneRecord(favoriteId);
   };
 
-  const computeNewPosition = (destIndex: number, sourceIndex: number) => {
-    const moveToFirstPosition = destIndex === 0;
-    const moveToLastPosition = destIndex === favoritesSorted.length - 1;
-    const moveAfterSource = destIndex > sourceIndex;
-
-    if (moveToFirstPosition) {
-      return favoritesSorted[0].position / 2;
-    } else if (moveToLastPosition) {
-      return favoritesSorted[destIndex - 1].position + 1;
-    } else if (moveAfterSource) {
-      return (
-        (favoritesSorted[destIndex + 1].position +
-          favoritesSorted[destIndex].position) /
-        2
-      );
-    } else {
-      return (
-        favoritesSorted[destIndex].position -
-        (favoritesSorted[destIndex].position -
-          favoritesSorted[destIndex - 1].position) /
-          2
-      );
-    }
-  };
-
   const handleReorderFavorite: OnDragEndResponder = (result) => {
-    if (!result.destination || !favoritesSorted) {
-      return;
-    }
+    if (!result.destination) return;
 
-    const newPosition = computeNewPosition(
-      result.destination.index,
-      result.source.index,
-    );
+    const draggedFavoriteId = result.draggableId;
+    const draggedFavorite = favorites.find((f) => f.id === draggedFavoriteId);
 
-    const updatedFavorite = favoritesSorted[result.source.index];
+    if (!draggedFavorite) return;
+
+    const relevantFavorites = draggedFavorite.favoriteFolderId
+      ? sortFavorites(
+          favorites.filter(
+            (favorite) =>
+              favorite.favoriteFolderId === draggedFavorite.favoriteFolderId,
+          ),
+          favoriteRelationFieldMetadataItems,
+          getObjectRecordIdentifierByNameSingular,
+          true,
+          views,
+          objectMetadataItems,
+        )
+      : sortFavorites(
+          favorites.filter(
+            (favorite) =>
+              !favorite.favoriteFolderId && favorite.workspaceMemberId,
+          ),
+          favoriteRelationFieldMetadataItems,
+          getObjectRecordIdentifierByNameSingular,
+          true,
+          views,
+          objectMetadataItems,
+        );
+    if (!relevantFavorites.length) return;
+
+    const newPosition = calculateNewPosition({
+      destinationIndex: result.destination.index,
+      sourceIndex: result.source.index,
+      items: relevantFavorites,
+    });
 
     updateOneFavorite({
-      idToUpdate: updatedFavorite.id,
-      updateOneRecordInput: {
-        position: newPosition,
-      },
+      idToUpdate: draggedFavoriteId,
+      updateOneRecordInput: { position: newPosition },
     });
   };
 
   return {
     favorites: favoritesSorted,
     workspaceFavorites: workspaceFavoritesSorted,
+    favoritesByFolder,
     createFavorite,
     handleReorderFavorite,
     deleteFavorite,

@@ -38,6 +38,13 @@ export type Analytics = {
   success: Scalars['Boolean']['output'];
 };
 
+export type AnalyticsTinybirdJwtMap = {
+  __typename?: 'AnalyticsTinybirdJwtMap';
+  getPageviewsAnalytics: Scalars['String']['output'];
+  getUsersAnalytics: Scalars['String']['output'];
+  getWebhookAnalytics: Scalars['String']['output'];
+};
+
 export type ApiConfig = {
   __typename?: 'ApiConfig';
   mutationMaximumAffectedRecords: Scalars['Float']['output'];
@@ -1497,7 +1504,7 @@ export type UpdateWorkspaceInput = {
 
 export type User = {
   __typename?: 'User';
-  analyticsTinybirdJwt?: Maybe<Scalars['String']['output']>;
+  analyticsTinybirdJwts?: Maybe<AnalyticsTinybirdJwtMap>;
   canImpersonate: Scalars['Boolean']['output'];
   createdAt: Scalars['DateTime']['output'];
   defaultAvatarUrl?: Maybe<Scalars['String']['output']>;

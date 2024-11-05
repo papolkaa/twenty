@@ -57,7 +57,7 @@ const StyledLabel = styled.span`
 
 export const Select = <Value extends string | number | null>({
   className,
-  disabled: disabledFromProps,
+  disabled: disabledFromProps = false,
   disableBlur = false,
   dropdownId,
   dropdownWidth = 176,
@@ -91,8 +91,7 @@ export const Select = <Value extends string | number | null>({
   );
 
   const isDisabled =
-    disabledFromProps ||
-    (options.length <= 1 && !isDefined(callToActionButton));
+    disabledFromProps || (options.length < 1 && !isDefined(callToActionButton));
 
   const { closeDropdown } = useDropdown(dropdownId);
 

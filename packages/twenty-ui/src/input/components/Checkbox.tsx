@@ -52,10 +52,13 @@ const StyledInputContainer = styled.div<InputProps>`
 
   cursor: ${({ disabled }) => (disabled ? 'not-allowed' : 'pointer')};
   display: flex;
-  padding: ${({ theme, checkboxSize }) =>
-    checkboxSize === CheckboxSize.Large
+  padding: ${({ theme, checkboxSize, hoverable }) => {
+    if (!hoverable) return 0;
+    
+    return checkboxSize === CheckboxSize.Large 
       ? theme.spacing(1.5)
-      : theme.spacing(1.25)};
+      : theme.spacing(1.25);
+  }};
   position: relative;
   ${({ hoverable, isChecked, theme, indeterminate, disabled }) => {
     if (!hoverable || disabled === true) return '';

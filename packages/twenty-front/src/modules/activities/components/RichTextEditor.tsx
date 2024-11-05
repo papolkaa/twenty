@@ -20,20 +20,20 @@ import { RightDrawerHotkeyScope } from '@/ui/layout/right-drawer/types/RightDraw
 import { usePreviousHotkeyScope } from '@/ui/utilities/hotkey/hooks/usePreviousHotkeyScope';
 import { useScopedHotkeys } from '@/ui/utilities/hotkey/hooks/useScopedHotkeys';
 import { isNonTextWritingKey } from '@/ui/utilities/hotkey/utils/isNonTextWritingKey';
-import { FileFolder, useUploadFileMutation } from '~/generated/graphql';
+import { FileFolder } from '~/generated/graphql';
 import { isDefined } from '~/utils/isDefined';
 import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
 
 import { getFileType } from '../files/utils/getFileType';
 
 import { BLOCK_SCHEMA } from '@/activities/blocks/constants/Schema';
+import { useUploadAttachment } from '@/activities/files/hooks/useUploadAttachment';
 import { Note } from '@/activities/types/Note';
 import { Task } from '@/activities/types/Task';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import '@blocknote/core/fonts/inter.css';
 import '@blocknote/mantine/style.css';
 import '@blocknote/react/style.css';
-import { getFileAbsoluteURI } from '~/utils/file/getFileAbsoluteURI';
 
 type RichTextEditorProps = {
   activityId: string;
@@ -121,22 +121,14 @@ export const RichTextEditor = ({
     canCreateActivityState,
   );
 
-  const [uploadFile] = useUploadFileMutation();
+  const { uploadAttachment } = useUploadAttachment();
 
   const handleUploadAttachment = async (file: File): Promise<string> => {
     if (isUndefinedOrNull(file)) {
       return '';
     }
-    const result = await uploadFile({
-      variables: {
-        file,
-        fileFolder: FileFolder.Attachment,
-      },
-    });
-    if (!result?.data?.uploadFile) {
-      throw new Error("Couldn't upload Image");
-    }
-    return getFileAbsoluteURI(result.data.uploadFile);
+
+    return await uploadAttachment(file, FileFolder.Attachment);
   };
 
   const prepareBody = (newStringifiedBody: string) => {

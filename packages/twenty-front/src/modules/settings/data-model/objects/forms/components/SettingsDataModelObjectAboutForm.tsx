@@ -49,6 +49,7 @@ type SettingsDataModelObjectAboutFormProps = {
   disabled?: boolean;
   disableNameEdit?: boolean;
   objectMetadataItem?: ObjectMetadataItem;
+  onBlur?: () => void;
 };
 
 const StyledInputsContainer = styled.div`
@@ -81,7 +82,7 @@ const StyledAdvancedSettingsContainer = styled.div`
 const StyledIconToolContainer = styled.div`
   border-right: 1px solid ${MAIN_COLORS.yellow};
   display: flex;
-  left: ${({ theme }) => theme.spacing(-5)};
+  left: ${({ theme }) => theme.spacing(-6)};
   position: absolute;
   height: 100%;
 `;
@@ -105,6 +106,7 @@ export const SettingsDataModelObjectAboutForm = ({
   disabled,
   disableNameEdit,
   objectMetadataItem,
+  onBlur,
 }: SettingsDataModelObjectAboutFormProps) => {
   const { control, watch, setValue } =
     useFormContext<SettingsDataModelObjectAboutFormValues>();
@@ -117,6 +119,9 @@ export const SettingsDataModelObjectAboutForm = ({
   const isLabelSyncedWithName = watch(IS_LABEL_SYNCED_WITH_NAME_LABEL);
   const labelSingular = watch('labelSingular');
   const labelPlural = watch('labelPlural');
+  watch('nameSingular');
+  watch('namePlural');
+  watch('description');
   const apiNameTooltipText = isLabelSyncedWithName
     ? 'Deactivate "Synchronize Objects Labels and API Names" to set a custom API name'
     : 'Input must be in camel case and cannot start with a number';
@@ -138,14 +143,14 @@ export const SettingsDataModelObjectAboutForm = ({
       setValue(
         'nameSingular',
         computeMetadataNameFromLabelOrThrow(labelSingular),
-        { shouldDirty: false },
+        { shouldDirty: true },
       );
   };
 
   const fillNamePluralFromLabelPlural = (labelPlural: string) => {
     isDefined(labelPlural) &&
       setValue('namePlural', computeMetadataNameFromLabelOrThrow(labelPlural), {
-        shouldDirty: false,
+        shouldDirty: true,
       });
   };
 
@@ -174,7 +179,7 @@ export const SettingsDataModelObjectAboutForm = ({
           defaultValue={objectMetadataItem?.labelSingular}
           render={({ field: { onChange, value } }) => (
             <TextInput
-              label={'Singular'}
+              label={'Label Singular'}
               placeholder={'Listing'}
               value={value}
               onChange={(value) => {
@@ -184,6 +189,7 @@ export const SettingsDataModelObjectAboutForm = ({
                   fillNameSingularFromLabelSingular(value);
                 }
               }}
+              onBlur={onBlur}
               disabled={disabled || disableNameEdit}
               fullWidth
               maxLength={OBJECT_NAME_MAXIMUM_LENGTH}
@@ -286,6 +292,7 @@ export const SettingsDataModelObjectAboutForm = ({
                               disabled={disabled}
                               fullWidth
                               maxLength={OBJECT_NAME_MAXIMUM_LENGTH}
+                              onBlur={onBlur}
                               RightIcon={() =>
                                 tooltip && (
                                   <>
@@ -294,7 +301,6 @@ export const SettingsDataModelObjectAboutForm = ({
                                       size={theme.icon.size.md}
                                       color={theme.font.color.tertiary}
                                     />
-
                                     <AppTooltip
                                       anchorSelect={`#${infoCircleElementId}${fieldName}`}
                                       content={tooltip}
@@ -323,12 +329,14 @@ export const SettingsDataModelObjectAboutForm = ({
                   render={({ field: { onChange, value } }) => (
                     <SyncObjectLabelAndNameToggle
                       value={value ?? true}
+                      disabled={!objectMetadataItem?.isCustom}
                       onChange={(value) => {
                         onChange(value);
                         if (value === true) {
                           fillNamePluralFromLabelPlural(labelPlural);
                           fillNameSingularFromLabelSingular(labelSingular);
                         }
+                        onBlur?.();
                       }}
                     />
                   )}
